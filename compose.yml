@@ -1,0 +1,59 @@
+
+services:
+  backend:
+    build: .
+    image: storex-backend:latest
+    container_name: storex-backend
+    ports:
+      - "${BACKEND_HOST_PORT}:${BACKEND_CONTAINER_PORT}"
+    environment:
+      SPRING_DATASOURCE_URL: ${BACKEND_DB_URL}
+      SPRING_DATASOURCE_USERNAME: ${BACKEND_DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${BACKEND_DB_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - storex-net
+
+  postgres:
+    image: postgres:13
+    container_name: storex-postgres
+    ports:
+      - "${POSTGRES_HOST_PORT}:${POSTGRES_CONTAINER_PORT}"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - storex-net
+
+  redis:
+    image: redis:6
+    container_name: storex-redis
+    ports:
+      - "${REDIS_HOST_PORT}:${REDIS_CONTAINER_PORT}"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      interval: 1s
+      timeout: 3s
+      retries: 5
+    networks:
+      - storex-net
+
+volumes:
+  db_data: 
+
+networks:
+  storex-net:
+    name: storex-net
+    driver: bridge
